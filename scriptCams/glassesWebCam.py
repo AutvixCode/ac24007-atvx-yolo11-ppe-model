@@ -5,9 +5,9 @@ from ultralytics import YOLO
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Utilizando dispositivo: {device}")
 
-model = YOLO('modelos/gloves.pt')
+model = YOLO('modelos/glasses.pt').to(device)
 
-classNames = ['Gloves', 'no-gloves']
+classNames = ['Glasses, no-Glasses']
 
 cap = cv2.VideoCapture(0)
 
