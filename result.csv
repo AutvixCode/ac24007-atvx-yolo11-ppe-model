@@ -1,0 +1,48 @@
+Imagem,Modelo,Objeto Detectado,Confiança,x1,y1,x2,y2
+1.jpg,gloves,No-Gloves,0.37,463,403,578,475
+1.jpg,glasses,Glasses,0.62,461,107,587,153
+1.jpg,ppe,Class 4,0.9,420,197,653,474
+1.jpg,ppe,Class 5,0.89,33,204,341,500
+1.jpg,ppe,Class 5,0.86,219,203,373,413
+1.jpg,ppe,Class 3,0.85,481,156,579,217
+1.jpg,ppe,mask,0.83,128,211,229,292
+1.jpg,ppe,mask,0.82,264,205,320,252
+1.jpg,ppe,Class 5,0.81,343,153,790,496
+1.jpg,ppe,Class 3,0.79,269,278,302,305
+1.jpg,ppe,Class 3,0.47,198,286,226,311
+1.jpg,ppe,Helmet,0.44,457,0,592,76
+1.jpg,ppe,Class 3,0.41,203,281,229,310
+1.jpg,ppe,mask,0.4,457,0,593,76
+1.jpg,ppe,Class 4,0.3,50,311,225,499
+2.jpg,gloves,No-Gloves,0.62,479,320,539,393
+2.jpg,gloves,No-Gloves,0.61,650,399,795,500
+2.jpg,gloves,No-Gloves,0.58,256,55,364,189
+2.jpg,gloves,Gloves,0.52,256,55,370,196
+2.jpg,glasses,Glasses,0.55,483,89,602,165
+2.jpg,ppe,Helmet,0.9,370,46,487,136
+2.jpg,ppe,Class 3,0.88,375,138,455,208
+2.jpg,ppe,Helmet,0.85,483,43,603,146
+2.jpg,ppe,Class 3,0.84,524,155,606,210
+2.jpg,ppe,Class 5,0.8,417,2,799,452
+2.jpg,ppe,Class 7,0.75,484,193,740,455
+2.jpg,ppe,Class 5,0.62,151,49,496,422
+2.jpg,ppe,Class 7,0.61,223,166,493,400
+3.jpg,gloves,Gloves,0.72,533,190,608,291
+3.jpg,gloves,No-Gloves,0.7,407,318,487,385
+3.jpg,gloves,No-Gloves,0.56,568,409,658,483
+3.jpg,gloves,No-Gloves,0.5,491,257,568,310
+3.jpg,gloves,No-Gloves,0.44,531,191,613,286
+3.jpg,ppe,Helmet,0.93,512,0,634,92
+3.jpg,ppe,Class 7,0.88,578,64,800,385
+3.jpg,ppe,Helmet,0.86,428,0,521,84
+3.jpg,ppe,Helmet,0.82,399,44,474,97
+3.jpg,ppe,Class 3,0.76,474,66,521,120
+3.jpg,ppe,Class 3,0.68,605,73,636,125
+3.jpg,ppe,Class 5,0.68,487,0,800,300
+3.jpg,ppe,Class 5,0.6,408,317,487,385
+3.jpg,ppe,Class 5,0.59,517,5,800,532
+3.jpg,ppe,Class 5,0.56,327,209,558,404
+3.jpg,ppe,Class 5,0.54,352,33,526,292
+3.jpg,ppe,Class 7,0.39,396,93,498,302
+3.jpg,ppe,Class 3,0.35,558,80,608,130
+3.jpg,ppe,Class 4,0.3,390,104,500,301

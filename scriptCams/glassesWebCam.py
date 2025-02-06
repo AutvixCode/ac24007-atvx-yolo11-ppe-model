@@ -7,7 +7,7 @@ print(f"Utilizando dispositivo: {device}")
 
 model = YOLO('modelos/glasses.pt').to(device)
 
-classNames = ['Glasses, no-Glasses']
+classNames = ['Glasses', 'no-Glasses']
 
 cap = cv2.VideoCapture(0)
 

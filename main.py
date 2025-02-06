@@ -1,58 +1,89 @@
 import cv2
-from ultralytics import YOLO
 import torch
+import os
+import pandas as pd
+from ultralytics import YOLO
 
-username = "admin"
-password = "autvix123456"
-ip_camera = "192.168.1.108"
-port = "554"
-rtsp_url = f"rtsp://{username}:{password}@{ip_camera}:{port}/cam/realmonitor?channel=1&subtype=0"
-
+# Configuração do dispositivo (GPU ou CPU)
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Utilizando dispositivo: {device}")
 
-model = YOLO("../modelos/ppe.pt").to(device)
+# Carregamento dos modelos
+models = {
+    "gloves": YOLO('modelos/gloves.pt').to(device),
+    "glasses": YOLO('modelos/glasses.pt').to(device),
+    "ppe": YOLO('modelos/ppe.pt').to(device)
+}
 
-classNames = ['Hardhat', 'Mask', 'NO-Hardhat', 'NO-Mask', 'NO-Safety Vest',
-              'Person', 'Safety Cone', 'Safety Vest', 'machinery', 'vehicle']
+# Classes para cada modelo
+class_names = {
+    "gloves": ['Gloves', 'No-Gloves'],
+    "glasses": ['Glasses', 'No-Glasses'],
+    "ppe": ['Helmet', 'Vest', 'mask']
+}
 
-cap = cv2.VideoCapture(rtsp_url)
+# Pasta de imagens
+image_folder = "imagens/"
+output_csv = "result.csv"
+results_list = []
 
-cap.set(cv2.CAP_PROP_FPS, 60)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-
-if not cap.isOpened():
-    print("Erro ao conectar à câmera. Verifique as configurações.")
+# Verifica se a pasta existe
+if not os.path.exists(image_folder):
+    print(f"Erro: A pasta {image_folder} não foi encontrada.")
     exit()
 
-print("Transmissão ao vivo iniciada com detecção de EPI. Pressione 'q' para sair.")
+# Lista todas as imagens na pasta
+image_files = [f for f in os.listdir(image_folder) if f.endswith(('.jpg', '.png', '.jpeg'))]
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("Não foi possível obter o frame da câmera.")
-        break
+if not image_files:
+    print("Nenhuma imagem encontrada na pasta.")
+    exit()
 
-    results = model(frame, device=device)
+print(f"Detectando objetos em {len(image_files)} imagens...")
 
-    for r in results:
-        for box in r.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])
-            conf = round(float(box.conf[0]), 2)
-            cls = int(box.cls[0])
-            currentClass = classNames[cls]
+# Processa cada imagem
+for image_file in image_files:
+    image_path = os.path.join(image_folder, image_file)
+    image = cv2.imread(image_path)
 
-            color = (0, 255, 0) if 'NO-' not in currentClass else (0, 0, 255)
+    if image is None:
+        print(f"Erro ao carregar {image_file}, pulando...")
+        continue
 
-            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-            cv2.putText(frame, f"{currentClass} {conf}", (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+    detections = []
 
-    cv2.imshow("Transmissão ao Vivo com Detecção de EPI", frame)
+    # Passa a imagem por cada modelo
+    for model_name, model in models.items():
+        results = model(image)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        for result in results:
+            for box in result.boxes:
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                conf = round(float(box.conf[0].item()), 2)
+                cls = int(box.cls[0].item())
+                current_class = class_names[model_name][cls] if cls < len(class_names[model_name]) else f"Class {cls}"
 
-cap.release()
+                # Salva a detecção no CSV
+                results_list.append([image_file, model_name, current_class, conf, x1, y1, x2, y2])
+
+                # Define cor (verde se detectado corretamente, vermelho se for "No-")
+                color = (0, 255, 0) if 'No-' not in current_class else (0, 0, 255)
+
+                # Desenha a caixa na imagem
+                cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+                cv2.putText(image, f"{current_class} {conf}", (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+    # Exibe a imagem com detecção
+    cv2.imshow("Detecção", image)
+    cv2.waitKey(500)  # Mostra a imagem por meio segundo antes de ir para a próxima
+
 cv2.destroyAllWindows()
+
+# Salva os resultados no CSV
+df = pd.DataFrame(results_list, columns=["Imagem", "Modelo", "Objeto Detectado", "Confiança", "x1", "y1", "x2", "y2"])
+df.to_csv(output_csv, index=False)
+print(f"Detecções salvas em {output_csv}")
+
+
+print(df.head)
