@@ -1,7 +1,6 @@
 import cv2
 import torch
 import os
-import pandas as pd
 from ultralytics import YOLO
 
 # Configuração do dispositivo (GPU ou CPU)
@@ -19,13 +18,12 @@ models = {
 class_names = {
     "gloves": ['Gloves', 'No-Gloves'],
     "glasses": ['Glasses', 'No-Glasses'],
-    "ppe": ['Helmet', 'Vest', 'mask']
+    "ppe": ['Hardhat', 'Mask', 'NO-Hardhat', 'NO-Mask', 'NO-Safety Vest', 'Person', 'Safety Cone',
+              'Safety Vest', 'machinery', 'vehicle']
 }
 
 # Pasta de imagens
 image_folder = "imagens/"
-output_csv = "result.csv"
-results_list = []
 
 # Verifica se a pasta existe
 if not os.path.exists(image_folder):
@@ -39,7 +37,7 @@ if not image_files:
     print("Nenhuma imagem encontrada na pasta.")
     exit()
 
-print(f"Detectando objetos em {len(image_files)} imagens...")
+print(f"Detectando objetos em {len(image_files)} imagens...\n")
 
 # Processa cada imagem
 for image_file in image_files:
@@ -47,15 +45,17 @@ for image_file in image_files:
     image = cv2.imread(image_path)
 
     if image is None:
-        print(f"Erro ao carregar {image_file}, pulando...")
+        print(f"Erro ao carregar {image_file}, pulando...\n")
         continue
 
-    detections = []
+    print(f"📷 Imagem: {image_file}")
 
     # Passa a imagem por cada modelo
     for model_name, model in models.items():
         results = model(image)
 
+        print(f"  🔍 Modelo: {model_name}")
+        
         for result in results:
             for box in result.boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
@@ -63,8 +63,7 @@ for image_file in image_files:
                 cls = int(box.cls[0].item())
                 current_class = class_names[model_name][cls] if cls < len(class_names[model_name]) else f"Class {cls}"
 
-                # Salva a detecção no CSV
-                results_list.append([image_file, model_name, current_class, conf, x1, y1, x2, y2])
+                print(f"    ✅ {current_class} | Confiança: {conf} | Caixa: ({x1}, {y1}, {x2}, {y2})")
 
                 # Define cor (verde se detectado corretamente, vermelho se for "No-")
                 color = (0, 255, 0) if 'No-' not in current_class else (0, 0, 255)
@@ -74,16 +73,12 @@ for image_file in image_files:
                 cv2.putText(image, f"{current_class} {conf}", (x1, y1 - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
+    print("\n" + "-"*50 + "\n")  # Apenas para separar as imagens na saída do terminal
+
     # Exibe a imagem com detecção
-    cv2.imshow("Detecção", image)
-    cv2.waitKey(500)  # Mostra a imagem por meio segundo antes de ir para a próxima
+    cv2.imshow(f"Detecção - {image_file}", image)  # Janela com o nome da imagem
 
+# Mantém todas as janelas abertas até que o usuário pressione uma tecla
+print("Pressione qualquer tecla em uma das janelas para fechar...")
+cv2.waitKey(0)
 cv2.destroyAllWindows()
-
-# Salva os resultados no CSV
-df = pd.DataFrame(results_list, columns=["Imagem", "Modelo", "Objeto Detectado", "Confiança", "x1", "y1", "x2", "y2"])
-df.to_csv(output_csv, index=False)
-print(f"Detecções salvas em {output_csv}")
-
-
-print(df.head)
