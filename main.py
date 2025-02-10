@@ -1,75 +1,69 @@
 import cv2
 import torch
-import os
 from ultralytics import YOLO
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Utilizando dispositivo: {device}")
 
-models = {
-    "gloves": YOLO('modelos/gloves.pt').to(device),
-    "glasses": YOLO('modelos/glasses.pt').to(device),
-    "ppe": YOLO('modelos/ppe.pt').to(device)
-}
+def load_models():
+    return {
+        "gloves": YOLO('modelos/gloves.pt').to(device),
+        "glasses": YOLO('modelos/glasses.pt').to(device),
+        "ppe": YOLO('modelos/ppe.pt').to(device)
+    }
 
-class_names = {
-    "gloves": ['Gloves', 'No-Gloves'],
-    "glasses": ['Glasses', 'No-Glasses'],
-    "ppe": ['Hardhat', 'Mask', 'NO-Hardhat', 'NO-Mask', 'NO-Safety Vest', 'Person', 'Safety Cone',
-            'Safety Vest', 'machinery', 'vehicle']
-}
+def get_class_names():
+    return {
+        "gloves": ['Gloves', 'No-Gloves'],
+        "glasses": ['Glasses', 'No-Glasses'],
+        "ppe": ['Hardhat', 'Mask', 'NO-Hardhat', 'NO-Mask', 'NO-Safety Vest', 'Person', 'Safety Cone',
+                'Safety Vest', 'machinery', 'vehicle']
+    }
 
-ppe_classes_permitidas = {'Safety Vest', 'NO-Safety Vest', 'Hardhat', 'NO-Hardhat', 'NO-Mask', 'Mask'}
+PPE_ALLOWED_CLASSES = {'Safety Vest', 'NO-Safety Vest', 'Hardhat', 'NO-Hardhat', 'NO-Mask', 'Mask'}
 
-image_folder = "imagens/"
-if not os.path.exists(image_folder):
-    print(f"Erro: A pasta {image_folder} não foi encontrada.")
-    exit()
-
-image_files = [f for f in os.listdir(image_folder) if f.endswith(('.jpg', '.png', '.jpeg'))]
-if not image_files:
-    print("Nenhuma imagem encontrada na pasta.")
-    exit()
-
-print(f"Detectando objetos em {len(image_files)} imagens...\n")
-
-for image_file in image_files:
-    image_path = os.path.join(image_folder, image_file)
-    image = cv2.imread(image_path)
-
-    if image is None:
-        print(f"Erro ao carregar {image_file}, pulando...\n")
-        continue
-
-    print(f"📷 Imagem: {image_file}")
-
-    for model_name, model in models.items():
-        results = model(image)
-
-        print(f"  🔍 Modelo: {model_name}")
+def draw_boxes(frame, boxes, class_names, model_name):
+    for box in boxes:
+        x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+        conf = round(float(box.conf[0].item()), 2)
+        cls = int(box.cls[0].item())
         
-        for result in results:
-            for box in result.boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                conf = round(float(box.conf[0].item()), 2)
-                cls = int(box.cls[0].item())
+        current_class = class_names[model_name][cls] if cls < len(class_names[model_name]) else f"Class {cls}"
 
-                current_class = class_names[model_name][cls] if cls < len(class_names[model_name]) else f"Class {cls}"
+        if model_name == "ppe" and current_class not in PPE_ALLOWED_CLASSES:
+            continue
+        
+        color = (0, 0, 255) if "No-" in current_class or "NO-" in current_class else (0, 255, 0)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+        cv2.putText(frame, f"{current_class} {conf}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-                if model_name == "ppe" and current_class not in ppe_classes_permitidas:
-                    continue
+def main():
+    models = load_models()
+    class_names = get_class_names()
 
-                color = (0, 0, 255) if "No-" in current_class or "NO-" in current_class else (0, 255, 0)
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        print("Erro: Não foi possível acessar a webcam.")
+        exit()
+        
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Erro ao capturar frame da webcam.")
+            break
+        
+        for model_name, model in models.items():
+            results = model(frame)
+            for result in results:
+                draw_boxes(frame, result.boxes, class_names, model_name)
+        
+        cv2.imshow("Detecção de EPI", frame)
+        
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-                print(f"    ✅ {current_class} | Confiança: {conf} | Caixa: ({x1}, {y1}, {x2}, {y2})")
+    cap.release()
+    cv2.destroyAllWindows()
 
-                cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(image, f"{current_class} {conf}", (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-
-    print("\n" + "-"*50 + "\n")
-
-    cv2.imshow(f"Detecção - {image_file}", image)
-
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()
