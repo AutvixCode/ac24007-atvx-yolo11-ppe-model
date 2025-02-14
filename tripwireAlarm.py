@@ -1,6 +1,5 @@
 import requests
-import os
-import time
+import sqlite3
 from datetime import datetime
 from requests.auth import HTTPDigestAuth
 
@@ -11,24 +10,38 @@ IP_CAMERA = "192.168.1.108"
 PORT = "80"
 EVENT_URL = f"http://{IP_CAMERA}:{PORT}/cgi-bin/eventManager.cgi?action=attach&codes=[CrossLineDetection]"
 SNAPSHOT_URL = f"http://{IP_CAMERA}:{PORT}/cgi-bin/snapshot.cgi"
-FOLDER_PATH = "fotos"
+DB_PATH = "base.db"
 
-if not os.path.exists(FOLDER_PATH):
-    os.makedirs(FOLDER_PATH)
+# 🔹 Função para salvar a imagem no banco de dados SQLite
+def salvar_no_banco(data, hora, imagem_blob):
+    try:
+        conexao = sqlite3.connect(DB_PATH)
+        cursor = conexao.cursor()
 
+        cursor.execute("""
+            INSERT INTO epi (data, hora, imagem) VALUES (?, ?, ?)
+        """, (data, hora, imagem_blob))
+
+        conexao.commit()
+        conexao.close()
+        print("[✅] Imagem salva no banco de dados com sucesso.")
+
+    except Exception as e:
+        print(f"[ERRO] Falha ao salvar no banco: {e}")
+
+# 🔹 Função para capturar um snapshot e salvar diretamente no banco
 def capture_snapshot():
     try:
         response = requests.get(SNAPSHOT_URL, auth=HTTPDigestAuth(USERNAME, PASSWORD), stream=True)
 
         if response.status_code == 200:
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            file_path = os.path.join(FOLDER_PATH, f"tripwire_{timestamp}.jpg")
+            data = datetime.now().strftime("%Y-%m-%d")
+            hora = datetime.now().strftime("%H:%M:%S")
 
-            with open(file_path, "wb") as file:
-                for chunk in response.iter_content(1024):
-                    file.write(chunk)
+            imagem_blob = response.content
 
-            print(f"[📸] Imagem salva: {file_path}")
+            salvar_no_banco(data, hora, imagem_blob)
+
         else:
             print(f"[ERRO] Falha ao capturar imagem. Código HTTP: {response.status_code}")
 

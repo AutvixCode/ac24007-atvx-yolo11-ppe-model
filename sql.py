@@ -5,7 +5,6 @@ cursor = banco.cursor()
 
 # Excluindo tabelas anteriores, caso existam
 cursor.execute("DROP TABLE IF EXISTS epi")
-cursor.execute("DROP TABLE IF EXISTS area")
 
 # Criando a tabela 'epi'
 cursor.execute("""
@@ -13,7 +12,7 @@ cursor.execute("""
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         data DATE,
         hora DATETIME,
-        imagem BLOB,
+        imagem BLOB
     )
 """)
 
