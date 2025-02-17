@@ -1,5 +1,6 @@
 import requests
 import sqlite3
+import time
 from datetime import datetime
 from requests.auth import HTTPDigestAuth
 
@@ -11,6 +12,7 @@ PORT = "80"
 EVENT_URL = f"http://{IP_CAMERA}:{PORT}/cgi-bin/eventManager.cgi?action=attach&codes=[CrossLineDetection]"
 SNAPSHOT_URL = f"http://{IP_CAMERA}:{PORT}/cgi-bin/snapshot.cgi"
 DB_PATH = "base.db"
+ultimo_registro = 0
 
 # 🔹 Função para salvar a imagem no banco de dados SQLite
 def salvar_no_banco(data, hora, imagem_blob):
@@ -31,6 +33,13 @@ def salvar_no_banco(data, hora, imagem_blob):
 
 # 🔹 Função para capturar um snapshot e salvar diretamente no banco
 def capture_snapshot():
+    global ultimo_registro
+
+    tempo_atual = time.time()
+    if tempo_atual - ultimo_registro < 20:
+        print(f"[⏳] Aguardando {20} segundos antes de registrar outro evento...")
+        return
+
     try:
         response = requests.get(SNAPSHOT_URL, auth=HTTPDigestAuth(USERNAME, PASSWORD), stream=True)
 
@@ -41,6 +50,7 @@ def capture_snapshot():
             imagem_blob = response.content
 
             salvar_no_banco(data, hora, imagem_blob)
+            ultimo_registro = tempo_atual
 
         else:
             print(f"[ERRO] Falha ao capturar imagem. Código HTTP: {response.status_code}")
