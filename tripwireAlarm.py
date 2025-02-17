@@ -4,6 +4,7 @@ import time
 import threading
 import io
 import cv2
+import torch
 from datetime import datetime
 from PIL import Image
 from ultralytics import YOLO
@@ -18,6 +19,29 @@ EVENT_URL = f"http://{IP_CAMERA}:{PORT}/cgi-bin/eventManager.cgi?action=attach&c
 SNAPSHOT_URL = f"http://{IP_CAMERA}:{PORT}/cgi-bin/snapshot.cgi"
 DB_PATH = "base.db"
 ultimo_registro = 0
+
+# 🔹 Definição do dispositivo para YOLO (GPU se disponível)
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+# 🔹 Carrega os modelos treinados
+def load_models():
+    return {
+        "gloves": YOLO('modelos/gloves.pt').to(device),
+        "glasses": YOLO('modelos/glasses.pt').to(device),
+        "ppe": YOLO('modelos/ppe.pt').to(device)
+    }
+
+# 🔹 Define as classes para cada modelo
+def get_class_names():
+    return {
+        "gloves": ['Gloves', 'No-Gloves'],
+        "glasses": ['Glasses', 'No-Glasses'],
+        "ppe": ['Hardhat', 'Mask', 'NO-Hardhat', 'NO-Mask', 'NO-Safety Vest', 'Person', 'Safety Cone',
+                'Safety Vest', 'machinery', 'vehicle']
+    }
+
+# 🔹 Classes permitidas do modelo PPE
+PPE_ALLOWED_CLASSES = {'Safety Vest', 'NO-Safety Vest', 'Hardhat', 'NO-Hardhat', 'NO-Mask', 'Mask'}
 
 # 🔹 Função para salvar a imagem no banco de dados SQLite
 def salvar_no_banco(data, hora, imagem_blob):
@@ -36,7 +60,7 @@ def salvar_no_banco(data, hora, imagem_blob):
     except Exception as e:
         print(f"[ERRO] Falha ao salvar no banco: {e}")
 
-# 🔹 Função para capturar um snapshot e salvar diretamente no banco
+# 🔹 Captura um snapshot e salva no banco
 def capture_snapshot():
     global ultimo_registro
 
@@ -63,7 +87,7 @@ def capture_snapshot():
     except Exception as e:
         print(f"[ERRO] Ocorreu um erro ao capturar a imagem: {e}")
 
-# 🔹 Função para monitorar alarmes de Tripwire
+# 🔹 Monitorar eventos de Tripwire
 def monitor_tripwire():
     print("[INFO] Conectando à câmera Dahua para monitorar alarmes de Tripwire...")
 
@@ -88,9 +112,10 @@ def monitor_tripwire():
     except Exception as e:
         print(f"[ERRO] Ocorreu um erro: {e}")
 
-# 🔹 Função para monitorar imagens e processar com YOLOv11
+# 🔹 Processamento de imagens usando os modelos YOLO
 def monitorar_e_salvar():
-    model = YOLO("modelos/ppe.pt")
+    modelos = load_models()
+    class_names = get_class_names()
 
     banco = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES, timeout=10)
     cursor = banco.cursor()
@@ -118,13 +143,26 @@ def monitorar_e_salvar():
                 last_id = id_imagem
 
                 image = Image.open(io.BytesIO(imagem_blob)).convert("RGB")
-                results = model(image)
-                detected_objects = [model.names.get(int(box.cls), f"Classe-{int(box.cls)}") for box in results[0].boxes]
+                
+                detections = {}
+                missing_gear_detected = False
 
-                print(f"📷 Imagem {id_imagem}: Objetos detectados -> {detected_objects}")
+                for model_name, model in modelos.items():
+                    results = model(image)
+                    detected_objects = [class_names[model_name][int(box.cls)] for box in results[0].boxes]
 
-                if any(obj.lower().startswith("no-") for obj in detected_objects):
-                    print(f"Ausência de objeto detectada na imagem {id_imagem}")
+                    if model_name == "ppe":
+                        detected_objects = [obj for obj in detected_objects if obj in PPE_ALLOWED_CLASSES]
+
+                    detections[model_name] = detected_objects
+
+                    if any("NO-" in obj for obj in detected_objects):
+                        missing_gear_detected = True
+
+                print(f"📷 Imagem {id_imagem}: Detecções -> {detections}")
+
+                if missing_gear_detected:
+                    print(f"⚠️ Ausência de EPI detectada na imagem {id_imagem}")
 
                     result_img = results[0].plot()
                     result_img = cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB)
