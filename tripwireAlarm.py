@@ -1,7 +1,12 @@
 import requests
 import sqlite3
 import time
+import threading
+import io
+import cv2
 from datetime import datetime
+from PIL import Image
+from ultralytics import YOLO
 from requests.auth import HTTPDigestAuth
 
 # 🔹 Configurações da Câmera Dahua
@@ -21,7 +26,7 @@ def salvar_no_banco(data, hora, imagem_blob):
         cursor = conexao.cursor()
 
         cursor.execute("""
-            INSERT INTO epi (data, hora, imagem) VALUES (?, ?, ?)
+            INSERT INTO tripwireAlarm (data, hora, imagem) VALUES (?, ?, ?)
         """, (data, hora, imagem_blob))
 
         conexao.commit()
@@ -83,5 +88,69 @@ def monitor_tripwire():
     except Exception as e:
         print(f"[ERRO] Ocorreu um erro: {e}")
 
-# 🔹 Iniciar o monitoramento
-monitor_tripwire()
+# 🔹 Função para monitorar imagens e processar com YOLOv11
+def monitorar_e_salvar():
+    model = YOLO("modelos/ppe.pt")
+
+    banco = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES, timeout=10)
+    cursor = banco.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS detectModel (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            data DATE,
+            hora DATETIME,
+            imagem BLOB
+        )
+    """)
+    banco.commit()
+
+    cursor.execute("SELECT MAX(id) FROM tripwireAlarm")
+    last_id = cursor.fetchone()[0] or 0
+
+    print(f"📡 Monitorando novas imagens... Último ID: {last_id}")
+
+    while True:
+        cursor.execute("SELECT id, data, hora, imagem FROM tripwireAlarm WHERE id > ?", (last_id,))
+        novas_imagens = cursor.fetchall()
+
+        if novas_imagens:
+            for id_imagem, data, hora, imagem_blob in novas_imagens:
+                last_id = id_imagem
+
+                image = Image.open(io.BytesIO(imagem_blob)).convert("RGB")
+                results = model(image)
+                detected_objects = [model.names.get(int(box.cls), f"Classe-{int(box.cls)}") for box in results[0].boxes]
+
+                print(f"📷 Imagem {id_imagem}: Objetos detectados -> {detected_objects}")
+
+                if any(obj.lower().startswith("no-") for obj in detected_objects):
+                    print(f"Ausência de objeto detectada na imagem {id_imagem}")
+
+                    result_img = results[0].plot()
+                    result_img = cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB)
+                    result_pil = Image.fromarray(result_img)
+
+                    img_byte_arr = io.BytesIO()
+                    result_pil.save(img_byte_arr, format='JPEG')
+                    image_blob = img_byte_arr.getvalue()
+
+                    try:
+                        cursor.execute("INSERT INTO detectModel (data, hora, imagem) VALUES (?, ?, ?)", 
+                                       (data, hora, sqlite3.Binary(image_blob)))
+                        banco.commit()
+                        print(f"✅ Imagem {id_imagem} com detecções salva no banco.")
+                    except sqlite3.Error as e:
+                        print(f"⚠️ Erro ao salvar no banco: {e}")
+
+        time.sleep(5)
+
+# 🔹 Rodar ambas as funções ao mesmo tempo
+if __name__ == "__main__":
+    thread1 = threading.Thread(target=monitor_tripwire)
+    thread2 = threading.Thread(target=monitorar_e_salvar)
+
+    thread1.start()
+    thread2.start()
+
+    thread1.join()
+    thread2.join()
