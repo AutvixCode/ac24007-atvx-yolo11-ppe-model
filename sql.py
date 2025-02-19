@@ -23,6 +23,7 @@ cursor.execute("""
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         data DATE,
         hora DATETIME,
+        a_detect BOOLEAN,
         imagem BLOB
     )
 """)
