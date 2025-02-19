@@ -15,9 +15,7 @@ Este repositório contém um modelo baseado no **YOLO11** para detecção de Equ
 yolo11_ppe_model/
 │── modelos/
 │── scriptCams/
-│── base.db
-│── emailSender.py
-│── sql.py
+│── database/
 │── tripwireAlarm.py
 │── readme.md           
 ```
@@ -30,24 +28,49 @@ https://github.com/AutvixCode/ac24007-atvx-yolo11-ppe-model.git
 
 ## Scripts
 
-### 1. load_models
+* **Monitoramento de Tripwire:** Detecta eventos de cruzamento de linha na câmera Dahua.
+* **Captura de Imagens:** Quando um evento de Tripwire ocorre, a imagem é capturada automaticamente.
+* **Armazenamento no Banco de Dados:** As imagens capturadas são salvas em um banco de dados SQLite.
+* **Processamento com YOLO:** As imagens são analisadas por modelos YOLO para detecção de EPIs.
+* **Detecção de Ausência de EPI:** Caso um trabalhador não esteja utilizando EPI adequado, um alerta é gerado.
+* **Notificação via E-mail:** Envio automático de e-mails em caso de ausência de EPI.
 
-Esta função carrega os modelos treinados para a detecção de EPIs:
+## Configurações
 
-* Retorna um dicionário contendo três modelos YOLO carregados na GPU ou CPU
+### Configuração da câmera
 
-### 2. get_class_names
+```python
+class CameraConfig:
+    USERNAME = "admin"
+    PASSWORD = "sua_senha"
+    IP_CAMERA = "192.168.1.108"
+    PORT = "80"
+```
 
-Esta função carrega as classes dos modelos
+### Configuração de email para envio
 
-* Retorna um dicionário contendo as classes associadas a cada modelo.
+```python
+class EmailConfig:
+    SENDER_EMAIL = "seu_email@example.com"
+    SENDER_PASSWORD = "sua_senha"
+    RECIPIENT_EMAIL = "destinatario@example.com"
+```
 
-### 3. draw_boxes
+### Configuração de Banco de Dados
 
-Esta função tem como objetivo montar as caixas de detencção con confidencia, classe e detecção
+```Sql
+CREATE TABLE tripwireAlarm (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    data DATE,
+    hora DATETIME,
+    imagem BLOB
+);
 
-* Desenha as caixas delimitadoras ao redor dos objetos detectados.
-
-### 4. Main
-
-Esta função é a principal do script, com o intuito de capturar o video e realizar a interferencia em tempo real dos objetos detectados nas câmeras.
+CREATE TABLE detectModel (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    data DATE,
+    hora DATETIME,
+    a_detect BOOLEAN,
+    imagem BLOB
+);
+```
