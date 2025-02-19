@@ -13,10 +13,12 @@ Este repositório contém um modelo baseado no **YOLO11** para detecção de Equ
 
 ```bash
 yolo11_ppe_model/
-│── images/            
 │── modelos/
 │── scriptCams/
-│── main.py
+│── base.db
+│── emailSender.py
+│── sql.py
+│── tripwireAlarm.py
 │── readme.md           
 ```
 
