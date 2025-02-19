@@ -23,7 +23,7 @@ class CameraConfig:
     PORT = "80"
     EVENT_URL = f"http://{IP_CAMERA}:{PORT}/cgi-bin/eventManager.cgi?action=attach&codes=[CrossLineDetection]"
     SNAPSHOT_URL = f"http://{IP_CAMERA}:{PORT}/cgi-bin/snapshot.cgi"
-    DB_PATH = "base.db"
+    DB_PATH = "database/base.db"
 
 # 🔹 Configurações de E-mail
 class EmailConfig:
