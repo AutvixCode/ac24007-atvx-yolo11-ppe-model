@@ -14,7 +14,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Utilizando dispositivo: {device}")
 
 # Carregar modelo treinado
-model = YOLO('modelos/gloves.pt').to(device)
+model = YOLO('modelos/best.pt').to(device)
 
 # Classes do modelo
 classNames = ['Gloves', 'no-gloves']
