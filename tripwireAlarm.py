@@ -39,7 +39,6 @@ class YOLOConfig:
     def load_models():
         return {
             "gloves": YOLO('modelos/gloves.pt').to(YOLOConfig.device),
-            "glasses": YOLO('modelos/glasses.pt').to(YOLOConfig.device),
             "ppe": YOLO('modelos/ppe.pt').to(YOLOConfig.device)
         }
 
@@ -47,7 +46,6 @@ class YOLOConfig:
     def get_class_names():
         return {
             "gloves": ['Gloves', 'No-Gloves'],
-            "glasses": ['Glasses', 'No-Glasses'],
             "ppe": ['Hardhat', 'Mask', 'NO-Hardhat', 'NO-Mask', 'NO-Safety Vest', 'Person', 'Safety Cone',
                      'Safety Vest', 'machinery', 'vehicle']
         }
