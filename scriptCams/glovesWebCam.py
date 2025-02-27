@@ -5,7 +5,7 @@ from ultralytics import YOLO
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Utilizando dispositivo: {device}")
 
-model = YOLO('modelos/gloves.pt')
+model = YOLO('modelos/best copy.pt')
 
 classNames = ['Gloves', 'no-gloves']
 
